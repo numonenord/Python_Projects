@@ -1,0 +1,382 @@
+import re
+import tempfile
+
+"""THE ONE ADRESS MACHINE
+#########################
+This program defines a simulator for a simplified assembly language computer, providing a class
+OAM with operations that mimic the fetch, decode, and execute cycle of a real CPU, manage memory
+and labels, load assembly code from a file, and run that code with a variety of operations.
+
+
+How To Use
+-----------
+The operation of the machine involves loading an assembly program using the `load`
+method. The assembly file you want to load must be in the same directory as the program itself. You may also choose
+to load the assembly code defined in the assembly_code variable by not giving an argument to the load method.
+When loading is complete, the machine can then be started using the `run` command. As the program is executed, the
+machine fetches each instruction, increments the program counter, and executes the instruction. Execution of an
+instruction might involve arithmetic operations, memory access, or control flow changes.
+
+
+Example Usage From Inside The Terminal
+--------------------------------------
+1. Load a file defined inside the program
+    x=OAM(True)  # start a new OAM machine named x
+    x.load() # load assembly code defined inside the program
+    x.run() # run the prorgram
+
+2. Load an external OAM file
+    x=OAM(True)  # start a new OAM machine named x
+    x.load("addTwoNumbers") # loads an OAM file named addTwoNumbers
+    x.run() # run the prorgram
+
+
+Description
+-----------
+Initialization: The constructor (__init__) initializes the machine
+with a set of default registers and memory.
+
+Running the machine: The `run` method is the primary method used to
+initiate the machine's operation. It uses a fetch-decode-execute cycle
+typical of most computer architectures, and is able to toggle verbose
+output using the `verbose` method.
+
+Instruction Handling: A suite of methods (like `fetch`, `increment`, `execute`,
+`resolve`, `read`, `write`, etc.) are used to handle instructions. Each corresponds
+to a particular part of the machine cycle or is used to perform a specific operation
+like reading from memory or executing an instruction. 
+
+Arithmetic Operations: The `add`, `sub`, `mlt`, `div`, `neg`, `inc`, and `dec` methods
+represent common arithmetic operations and act on the machine's accumulator (`acc`)
+and B register (`b`).
+
+Memory Access and Branch Operations: The `lda`, `sta`, `br`, `brp`, `brz`, `bri`, and
+`brs` methods handle loading/storing from/to memory and branching (changing the program
+counter). 
+"""
+
+# The OAM class defines the OAM model. 
+class OAM():
+    # The constructor defines three instance variables: the debug
+    # flag, which regulates the level of output produced at runtime,
+    # the labels dictionary, which defines the mapping from labels to
+    # memory locations, and the list representing memory. It also
+    # initializes the OAM memory (a list) and the label reference
+    # table (a dictionary), with the standard names for I/O (stdin,
+    # stdout) included.
+    def __init__(self, debug=False):
+        self.debug = debug	# Run time output
+        self.pc = 1		# Program counter
+        self.ir = '?'		# Instruction register
+        self.acc = '?'		# Accumulator
+        self.b = '?'		# B register
+        self.mem = []		# Memory
+        self.labels = {'stdin':0, 'stdout':0}	# Labels, including I/O
+
+        # The assembly_code variable is for when no file is selected when loading.
+        # Replace the below example code with desired instructions
+        self.assembly_code = """ 
+             lda 10
+              add 5
+             sta 15
+                hlt
+                """
+
+    # The verbose() method toggles the debug variable, which governs
+    # run time reporting status.
+    def verbose(self):
+        self.debug = not self.debug
+
+    # The run() method initalizes the machine (but doesn't clear
+    # memory or labels) and then implements the
+    # fetch/increment/execute cycle.
+    def run(self):
+        self.pc = 1
+        self.ar = '?'
+        self.ir = '?'
+        self.acc = '?'
+        self.b = '?'
+        while self.pc > 0:
+            self.fetch()
+            self.increment()
+            self.execute()
+        if self.debug:
+            print("Processing halted.")
+
+    # The fetch() method implements the fetch cycle.
+    def fetch(self):
+        self.ar = self.pc
+        self.ir = self.read()
+        if self.debug:
+            print("Fetch: AR = {} IR = {}".format(self.ar, ' '.join(self.ir)))
+
+    # The increment() method implements the increment cycle.
+    def increment(self):
+        self.pc = self.pc + 1
+        if self.debug:
+            print("  Increment: PC = {}".format(self.pc))
+
+    # The execute() method implements the execute cycle, dispatching
+    # to the appropriate method as per the first part of the
+    # IR. Returns a Boolean indicating whether execution should
+    # continue.
+    def execute(self):
+        # Check for a match, report an issue
+        if self.debug:
+            print("  Execute: IR = '{}'".format(self.ir))
+        try:
+            exec('self.' + self.ir[0] + '()')
+        except:
+            if self.debug:
+                print("Abort: ill-formed instruction IR = '{}'".format(self.ir))
+            self.pc = 0
+
+    # The resolve() method resolves a reference to a memory location,
+    # which may be an integer or a reference label, such as may be
+    # found in an instruction, and returns an int.
+    def resolve(self, address):
+        try:                        #
+            address = int(address)  # if address is not a label
+            return address          #
+        except:
+            return self.labels.get(address) # if address is a label
+
+    # The read() method returns a value from the memory location
+    # specified by the AR. If the AR value is 0, it returns a value
+    # from keyboard input. If the AR value is a label, it returns the
+    # value from memory at the label's reference. Otherwise, if the AR
+    # value is a number, it returns the value of memory at that
+    # location. If the memory location does not exist, it returns '?'.
+    def read(self):
+        if self.ar == 0:
+            return input("Input: ")
+        elif self.ar in self.labels:
+            return self.labels.get(self.ar)
+        elif type(self.ar) == int and self.ar != 0:
+            return self.mem[self.ar]
+        else:
+            return "?"
+
+    # The write() copies the value a value from the ACC into the
+    # location specified by the AR. If the AR value is 0, it prints
+    # the value to the screen. If the AR value is a label, it copies
+    # the value from the ACC into the label's reference. Otherwise, if
+    # the AR value is a number, it copies the value from the ACC to
+    # memory at that location.
+    def write(self):
+        if self.ar == 0:
+            print("Output: " + str(self.acc))       
+        elif self.ar in self.labels:                    
+            self.mem[self.labels[self.ar]] = self.acc
+        elif type(self.ar) == int and self.ar != 0:
+            try:                                #
+                self.mem[self.ar] = self.acc    # tries to insert acc into existing memory location
+            except:                             
+                tempList = (self.ar - len(self.mem)) * ["?"] # if AR memory location does not exist,
+                self.mem.extend(tempList)                    # it extends the memory list with unfilled
+                self.mem.append(self.acc)                    # spots inbetween the value referenced and
+                                                             # the last existing memory location.
+
+
+    # The add() method adds the B register to ACC and stores the
+    # result in ACC.
+    def add(self):
+        self.b = int(self.mem[self.resolve(list(self.ir)[-1])]) # converts the value from ir into a
+        self.acc = int(self.acc) + self.b                       # value that can be referenced in the memory list,
+                                                                # and then converts that memory value to an int
+                                                                # and adds it to the accumulator. same self.b code
+                                                                # used for the other acc functions                                                
+    # The sub() method subtracts the B register from ACC and stores
+    # the result in ACC.
+    def sub(self):
+        self.b = int(self.mem[self.resolve(list(self.ir)[-1])])
+        self.acc = int(self.acc) - self.b
+
+    # The mlt() method multiplies the B register with ACC and stores
+    # the result in ACC.
+    def mlt(self):
+        self.b = int(self.mem[self.resolve(list(self.ir)[-1])])
+        self.acc = int(self.acc) * self.b
+
+    # The div() method divides the ACC with the B register and stores
+    # the result in ACC.
+    def div(self):
+        self.b = int(self.mem[self.resolve(list(self.ir)[-1])])
+        self.acc = int(self.acc) // self.b
+
+    # The set() method sets the ACC to the specified value from the
+    # IR.
+    def set(self):
+        self.acc = " ".join(self.ir).split(" ")[-1] # makes a string out of tuple and finds its last value
+        try:                         #
+            self.acc = int(self.acc) # tries converting the acc to int in the case that it is 
+        except:                      # not an instruction such as "hlt"
+            pass                     #
+
+    # The neg() method inverts the sign of the ACC.
+    def neg(self):
+        self.acc = int(self.acc)
+        self.acc = (-1) * self.acc
+
+    # The inc() method adds 1 to the ACC.
+    def inc(self):
+        self.acc = int(self.acc)
+        self.acc += 1
+
+    # The dec() method subtracts 1 from the ACC.
+    def dec(self):
+        self.acc = int(self.acc)
+        self.acc -= 1
+
+    # The lda() method sets the AR to the address from the IR and
+    # reads the corresponding value from memory into ACC. Note that
+    # the value in the IR might be a label, an integer, or 0 (meaning
+    # read input). Use the resolve() method to disambiguate.
+    def lda(self):
+        self.ar = self.resolve(list(self.ir)[-1])
+        self.acc = self.read()
+
+    # The sta() method sets the AR to the address from the IR and
+    # stores the value of ACC into the corresponding value in
+    # memory. Note that the value in the IR might be a label, an
+    # integer, or 0 (meaning read input). Use the resolve() method to
+    # disambiguate.
+    def sta(self):
+        self.ar = self.resolve(list(self.ir)[-1])
+        self.write()
+
+    # The br() method sets the PC to the specified value.
+    def br(self):
+        self.pc = self.resolve(list(self.ir)[-1])
+
+    # The brp() method sets the PC to the specified value if and only
+    # if ACC > 0.
+    def brp(self):  #is all of this nessecary in general
+        try:
+            self.acc = int(self.acc)
+            if self.acc > 0:
+                self.pc = self.resolve(list(self.ir)[-1])
+        except:
+            pass
+        
+    # The brz() method sets the PC to the specified value if and only
+    # if ACC == 0.
+    def brz(self):
+        try:
+            self.acc = int(self.acc)
+            if self.acc == 0:
+                self.pc = self.resolve(list(self.ir)[-1])
+        except:
+            pass
+
+    # The bri() method sets the PC to the value of memory at the
+    # location referenced. Note that the value in memory might be a
+    # label, an integer, or 0 (meaning read input). Use the resolve()
+    # method to disambiguate.
+    def bri(self):
+        self.pc = self.mem[self.resolve(list(self.ir)[-1])]
+
+    # The brs() method stores the PC value in the memory location
+    # referenced and then branches to one beyond that location
+    # (remember the intervening increment phase).
+    def brs(self):
+        self.mem[self.resolve(list(self.ir)[-1])] = self.pc
+        self.pc = self.resolve(list(self.ir)[-1])+1
+        
+    # The hlt() method stops the machine by setting the PC to 0.
+    def hlt(self):
+        self.pc = 0
+
+    # Create file from assembly_code variable so to properly interact with load method
+    def create_file_from_string(self, string):
+        with tempfile.NamedTemporaryFile(delete=False) as tf:
+            tf.write(string.encode())
+            return tf.name
+
+    # The load(filename) method takes a file of OAM machine/assembly
+    # code, initializes the OAM memory and label reference table, and
+    # loads the contents of the file into memory starting at location
+    # 1. Blank lines or lines that start with the comment character,
+    # #, are skipped. Remaining lines that match the specified format
+    # are written to OAM memory using the write() method (to properly
+    # extend self.mem) as a tuple of one or two strings, as
+    # appropriate.
+    def load(self, filename=None):
+        # clears memory and reference table when loading a new file. Allows for continous loading of
+        # programs.
+        self.mem = []
+        self.labels = {'stdin':0, 'stdout':0}
+
+        # If no filename is provided, load the instructions from assembly_code
+        if filename is None:
+            filename = self.create_file_from_string(self.assembly_code)
+
+        # opens and reads oam-file
+        with open(filename, 'r') as infile:
+            file = infile.readlines()
+
+        # initializes memory
+        self.mem.append("?")
+
+        # checks to see if each line contains valid input and is in the right format
+        instructionsAmount = 0 # counts the number of instructions in the file
+        for line in file:
+            regx = re.match("(?i)((((((((((\d+\.| ?)( ?)(([a-zA-Z]+,)|( ?)))| ?)( +)((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop))( ?)(\d+|[a-zA-Z]+|)))))))|(((((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop))( ?)([a-zA-Z]+|\d+))))|((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop)))", line)
+            if regx:
+                instructionsAmount += 1
+                filteredLine = regx.group(0).lower() # extracts each line as a lower case string
+                for item in filteredLine.split(" "):                #
+                    if len(item) >= 1 and item[-1] == ",":          # finishes reference table
+                        self.labels[item[:-1]] = instructionsAmount #
+
+        lineCounter = 1 # counts the number of lines in the file
+        for line in file:
+            regx = re.match("(?i)((((((((((\d+\.| ?)( ?)(([a-zA-Z]+,)|( ?)))| ?)( +)((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop))( ?)(\d+|[a-zA-Z]+|)))))))|(((((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop))( ?)([a-zA-Z]+|\d+))))|((add)|(sub)|(mlt)|(div)|(set)|(neg)|(inc)|(dec)|(lda)|(sta)|(brp)|(brz)|(bri)|(brs)|(hlt)|(br)|(noop)))", line)
+            if regx:
+                filteredLine = regx.group(0).lower()
+
+                if "." in filteredLine.split()[0]:                  #
+                    filteredLine = str(filteredLine).split()[1:]    # removes unwanted numbers at the beginning if they exist in the file
+                    filteredLine = " ".join(filteredLine)           # 
+                    
+                tupl = tuple()                                      # initializing tuples with just the instructions.
+                if "," not in (list(filteredLine.split(" "))[0]):   # checks both first and second word in filteredLine to see if   
+                    tupl += (list(filteredLine.split(" "))[0],)     # if either contains instructions, as the first word might be a             
+                elif "," not in (list(filteredLine.split(" "))[1]): # label                                    
+                    tupl += (list(filteredLine.split(" "))[1],)     # 
+                self.mem.append(tupl)
+
+                # sets the ar and acc to the correct values for the write function deal with
+                self.ar = lineCounter
+                try:
+                    self.acc = self.mem[-1] + (str(self.labels[list(filteredLine.split(" "))[-1]]),)   # adds tuple that was created above with labels int value 
+                    self.write()
+                except:
+                    if "," in filteredLine.split()[0]:              #
+                        self.acc = tuple(filteredLine.split()[1:])  # removes label if it exists
+                    else:                                           #
+                        self.acc = tuple(filteredLine.split())      #
+                    self.write()
+                lineCounter += 1
+
+        # displays the number of instructions loaded to the user if verbose is turned on
+        if self.debug:
+            print(str(instructionsAmount) + " instructions loaded.")
+
+    # The dump() method prints out a representation of the state of
+    # the machine, followed by whatever is in memory and the label
+    # references.
+    def dump(self):
+        print("State: PC=" + str(self.pc) + "; ACC=" + str(self.acc) +
+              "; B=" + str(self.b) + "; AR=" + str(self.ar) + "; IR=" + str(self.ir) +
+              "\n" + "Memory: ")
+
+        count = 0
+        for item in self.mem:
+              print(str(count) + ". " + str(item))
+              count += 1
+
+        print("Reference table: ")
+              
+        for item in self.labels:
+            print("  " + str(item) + ": " + str(self.labels.get(item)))
