@@ -1,3 +1,16 @@
+
+# Use the Sieve of Eratosthenes algorithm to find all prime numbers up to n.
+def findPrimeNumbers(n):
+    """
+    n: Number up to which to find primes
+    """
+    sieve = [True] * (n+1)
+    for x in range(2, int(n**0.5) + 1):
+        if sieve[x]:
+            for i in range(x*x, n+1, x):
+                sieve[i] = False
+    return [i for i in range(2,n) if sieve[i]]
+
 # Partition a list into chunks of n size.
 def partitionList(lst, n):
     """
