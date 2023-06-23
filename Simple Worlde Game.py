@@ -13,7 +13,7 @@ def readWords(filename='words.dat'):
     
 # evalGuess(guess, target) takes two equal-length
 # lower-case strings representing the user's latest guess and the
-# hidden target word, respectively. It returns feedback string that is
+# hidden target word, respectively. It returns a feedback string that is
 # equal in length to both word and target, consisting of either upper
 # or lower case characters from word or the '.' character.
 def evalGuess(guess, target):
