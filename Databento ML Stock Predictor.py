@@ -16,8 +16,8 @@ Fetches historical stock price data from the Databento Historical API and uses m
 the closing price for a given symbol in recent weeks.
 
 The program uses a linear regression model to do predictions. The input features include the symbols' open, high,
-and low prices, as well as trade volume and techinchal indicators (vwap and rsi) from the stock's previous days of
-trading data. The output feature is the closing price of the next day. Uses 30 days of trades data for training by
+and low prices, as well as trade volume and technical indicators (vwap and rsi) from the stock's previous days of
+trading data. The output feature is the closing price of the next day. Uses 30 days of trade data for training by
 default.
 
 The program fetches the data, cleans it, trains the model, and makes predictions. The results are then visualized
