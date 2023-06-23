@@ -1,10 +1,10 @@
 import re
 import tempfile
 
-"""THE ONE ADRESS MACHINE
+"""THE ONE ADDRESS MACHINE
 #########################
 This program defines a simulator for a simplified assembly language computer, providing a class
-OAM with operations that mimic the fetch, decode, and execute cycle of a real CPU, manage memory
+OAM with operations that mimic the fetch, decode and execute cycle of a real CPU, manage memory
 and labels, load assembly code from a file, and run that code with a variety of operations.
 
 
@@ -38,7 +38,7 @@ with a set of default registers and memory.
 
 Running the machine: The `run` method is the primary method used to
 initiate the machine's operation. It uses a fetch-decode-execute cycle
-typical of most computer architectures, and is able to toggle verbose
+typical of most computer architectures and is able to toggle verbose
 output using the `verbose` method.
 
 Instruction Handling: A suite of methods (like `fetch`, `increment`, `execute`,
