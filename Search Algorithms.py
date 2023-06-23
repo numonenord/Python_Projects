@@ -12,7 +12,6 @@ def depthFirstSearch(graph, start):
             stack.extend(graph[vertex] - visited)
     return visited
 
-
 # Implement the Breadth-First Search algorithm on a graph.
 from collections import deque
 def bfs(graph, root):
@@ -27,21 +26,7 @@ def bfs(graph, root):
             visited.add(vertex)
             queue.extend(graph[vertex] - visited)
     return visited
-
-
-# Use the Sieve of Eratosthenes algorithm to find all prime numbers up to n.
-def findPrimeNumbers(n):
-    """
-    n: Number up to which to find primes
-    """
-    sieve = [True] * (n+1)
-    for x in range(2, int(n**0.5) + 1):
-        if sieve[x]:
-            for i in range(x*x, n+1, x):
-                sieve[i] = False
-    return [i for i in range(2,n) if sieve[i]]
-
-
+    
 # Implement the quicksort sorting algorithm.
 def quicksort(arr):
     """
