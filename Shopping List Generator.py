@@ -1,12 +1,9 @@
 """
 SHOPPING LIST GENERATOR
 
-Whenever i mealprep, i deal with a lot of recepies that overlap in terms of their ingridients.
-This simple program takes all your recepies and combines them into a single shopping list.
+Whenever I meal prep, I deal with a lot of recipes that overlap in terms of their ingredients.
+This simple program combines all your recipes into a single shopping list.
 """
-
-import re
-from collections import defaultdict
 
 import re
 from collections import defaultdict
