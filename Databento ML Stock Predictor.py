@@ -17,7 +17,7 @@ the closing price for a given symbol in recent weeks.
 
 The program uses a linear regression model to do predictions. The input features include the symbols' open, high,
 and low prices, as well as trade volume and technical indicators (vwap and rsi) from the stock's previous days of
-trading data. The output feature is the closing price of the next day. Uses 30 days of trade data for training by
+trading data. The output feature is the closing price of the next day. Uses 30 days of trades data for training by
 default.
 
 The program fetches the data, cleans it, trains the model, and makes predictions. The results are then visualized
@@ -30,7 +30,7 @@ CHOSEN_DATASET = "XNAS.ITCH"  # dataset to fetch from
 NUM_DAYS = 30  # number of days of training data
 ACCURACY_THRESHOLD = 0.8  # the minimum acceptable R squared value
 IGNORE_WARNINGS = True  # show or hide warnings
-DEFAULT_API_KEY = "db-sFD8bxaSB3GEjuq5SqRgbsvxcLgUx"  # default api key to use for fetching data
+DEFAULT_API_KEY = ""  # default api key to use for fetching data
 
 if IGNORE_WARNINGS:
     warnings.filterwarnings("ignore", category=db.common.error.BentoWarning)
@@ -177,9 +177,12 @@ def main(num_days=NUM_DAYS):
     print("(typing 'exit' will stop the program)")
 
     while True: # handles wrong api key
-        api_key = input_handler("Enter Databento API key, or hit enter to use the default key: ")
-        if not api_key:
+        api_key = input_handler("Enter Databento API key, or hit enter to use default key: ")
+        if not api_key and DEFAULT_API_KEY != "":
             api_key = DEFAULT_API_KEY
+        elif not api_key and DEFAULT_API_KEY == "":
+            print("No default API key is given. Please provide your own key.")
+            continue
         client = create_client(api_key)
         symbol = input_handler("Enter a symbol you want to investigate: ").upper()
     
@@ -207,7 +210,7 @@ def main(num_days=NUM_DAYS):
             print("It was not possible to achieve satisfactory accuracy for the given symbol.")
             exit()
 
-        # add 10 days to training data if we get a an r squared score that is too low
+        # add 10 days to training data if we get a an r squared value that is too low
         num_days += 10
         data = check_symbol(client, symbol, num_days)
         df_test, r2, mse, num_days, satisfactory = fetch_and_train_model(client, symbol, CHOSEN_DATASET, num_days, data)
